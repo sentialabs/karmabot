@@ -1,0 +1,51 @@
+service: karmabot-tutorial
+
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+provider:
+  name: aws
+  region: eu-west-1
+  runtime: python3.6
+  environment:
+    KARMA_TABLE: ${self:service}-karma-${opt:stage, self:provider.stage}
+    BOT_TOKEN: xoxb-264703633300-418469152114-HRgXBpBqVH34Oxe9jrIxOOHg
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: 
+        - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.KARMA_TABLE}"
+
+functions:
+  event_receive:
+    handler: karmabot/event.receive
+    memorySize: 128 # optional, in MB, default is 1024
+    events:
+      - http:
+          path: event/receive
+          method: post
+          cors: true
+
+resources:
+  Resources:
+    KarmaDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: karma_id
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: karma_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.KARMA_TABLE}
